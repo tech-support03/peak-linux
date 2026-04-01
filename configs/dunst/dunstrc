@@ -1,0 +1,80 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  peak-linux — Dunst Notification Config                    ║
+# ║  macOS-style notification banners                          ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+[global]
+    monitor = 0
+    follow = mouse
+    width = 350
+    height = (0, 300)
+    origin = top-right
+    offset = 12x44
+    notification_limit = 5
+
+    # Appearance
+    corner_radius = 12
+    frame_width = 1
+    frame_color = "#3A3A3C"
+    separator_height = 1
+    separator_color = frame
+    padding = 12
+    horizontal_padding = 14
+    text_icon_padding = 14
+    gap_size = 6
+
+    # Text
+    font = Inter 11
+    line_height = 2
+    format = "<b>%s</b>\n%b"
+    alignment = left
+    vertical_alignment = center
+    word_wrap = yes
+    ellipsize = end
+    markup = full
+
+    # Icons
+    icon_position = left
+    min_icon_size = 32
+    max_icon_size = 48
+    icon_theme = WhiteSur
+
+    # Behavior
+    sort = yes
+    idle_threshold = 120
+    show_age_threshold = 60
+    sticky_history = yes
+    history_length = 50
+    show_indicators = no
+
+    # Mouse actions
+    mouse_left_click = close_current
+    mouse_middle_click = do_action, close_current
+    mouse_right_click = close_all
+
+    # Progress bar
+    progress_bar = true
+    progress_bar_height = 8
+    progress_bar_frame_width = 0
+    progress_bar_min_width = 150
+    progress_bar_max_width = 300
+    progress_bar_corner_radius = 4
+
+[urgency_low]
+    background = "#2C2C2EDD"
+    foreground = "#D1D1D6"
+    highlight = "#007AFF"
+    timeout = 5
+
+[urgency_normal]
+    background = "#2C2C2EDD"
+    foreground = "#FFFFFF"
+    highlight = "#007AFF"
+    timeout = 8
+
+[urgency_critical]
+    background = "#2C2C2EDD"
+    foreground = "#FFFFFF"
+    frame_color = "#FF3B30"
+    highlight = "#FF3B30"
+    timeout = 0

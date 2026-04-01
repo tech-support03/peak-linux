@@ -1,0 +1,7 @@
+# peak-linux — Environment variables for Hyprland session
+# Placed in ~/.config/environment.d/peak-linux.conf
+
+XCURSOR_THEME=WhiteSur-cursors
+XCURSOR_SIZE=24
+GTK_THEME=WhiteSur-Dark
+QT_QPA_PLATFORMTHEME=qt5ct

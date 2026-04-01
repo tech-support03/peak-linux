@@ -1,0 +1,67 @@
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  peak-linux — wofi Stylesheet                               ║
+   ║  macOS Spotlight-inspired launcher                          ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+window {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+}
+
+#outer-box {
+    margin: 0;
+    padding: 0;
+    background: rgba(30, 30, 30, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+}
+
+#input {
+    margin: 16px 16px 8px 16px;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: #FFFFFF;
+    font-family: "Inter", sans-serif;
+    font-size: 16px;
+    outline: none;
+}
+
+#input:focus {
+    border-color: rgba(0, 122, 255, 0.5);
+}
+
+#inner-box {
+    margin: 4px 8px 8px 8px;
+    padding: 0;
+}
+
+#scroll {
+    margin: 0;
+    padding: 0;
+}
+
+#text {
+    margin: 0;
+    padding: 0;
+    color: #FFFFFF;
+    font-family: "Inter", sans-serif;
+    font-size: 14px;
+}
+
+#entry {
+    padding: 8px 12px;
+    margin: 2px 8px;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+}
+
+#entry:selected {
+    background: rgba(0, 122, 255, 0.4);
+}
+
+#entry image {
+    margin-right: 8px;
+}
