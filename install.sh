@@ -43,6 +43,7 @@ echo "  • Hyprland compositor + Waybar + wofi"
 echo "  • macOS theme (WhiteSur GTK + icons)"
 echo "  • Developer tools (neovim, git, zsh)"
 echo "  • PipeWire audio + essential system utils"
+echo "  • Secure Boot with custom keys (sbctl)"
 echo ""
 read -rp "Continue? [y/N] " confirm
 [[ "$confirm" =~ ^[Yy]$ ]] || exit 0
@@ -79,11 +80,10 @@ PKGS_HYPRLAND=(
     qt6-wayland
 )
 
-# Bar, launcher, dock, notifications
+# Bar, launcher, notifications
 PKGS_UI=(
     waybar
     wofi
-    nwg-dock-hyprland
     dunst
     libnotify
 )
@@ -117,6 +117,7 @@ PKGS_SYSTEM=(
     wl-clipboard
     cliphist
     swww
+    sbctl
 )
 
 # Developer tools
@@ -149,7 +150,6 @@ PKGS_SHELL=(
 
 # Fonts
 PKGS_FONTS=(
-    ttf-inter
     ttf-jetbrains-mono-nerd
     noto-fonts
     noto-fonts-emoji
@@ -161,29 +161,88 @@ PKGS_THEME=(
     papirus-icon-theme
 )
 
-# AUR packages
+# AUR packages (not in official repos — installed via paru)
 AUR_PKGS=(
+    inter-font
+    nwg-dock-hyprland
     whitesur-gtk-theme
     whitesur-icon-theme
     whitesur-cursor-theme
     sddm-sugar-candy-git
 )
 
-# Install official packages
-sudo pacman -S --needed --noconfirm \
-    "${PKGS_HYPRLAND[@]}" \
-    "${PKGS_UI[@]}" \
-    "${PKGS_APPS[@]}" \
-    "${PKGS_SYSTEM[@]}" \
-    "${PKGS_DEV[@]}" \
-    "${PKGS_SHELL[@]}" \
-    "${PKGS_FONTS[@]}" \
+# Combine all official packages
+ALL_OFFICIAL=(
+    "${PKGS_HYPRLAND[@]}"
+    "${PKGS_UI[@]}"
+    "${PKGS_APPS[@]}"
+    "${PKGS_SYSTEM[@]}"
+    "${PKGS_DEV[@]}"
+    "${PKGS_SHELL[@]}"
+    "${PKGS_FONTS[@]}"
     "${PKGS_THEME[@]}"
+)
 
+# Validate official packages exist in repos before installing
+info "Validating official packages..."
+MISSING_OFFICIAL=()
+for pkg in "${ALL_OFFICIAL[@]}"; do
+    if ! pacman -Si "$pkg" &>/dev/null; then
+        MISSING_OFFICIAL+=("$pkg")
+    fi
+done
+
+if [[ ${#MISSING_OFFICIAL[@]} -gt 0 ]]; then
+    warn "The following packages were not found in official repos:"
+    for pkg in "${MISSING_OFFICIAL[@]}"; do
+        echo "    • $pkg"
+    done
+    echo ""
+    info "Checking if they exist in the AUR instead..."
+    for pkg in "${MISSING_OFFICIAL[@]}"; do
+        if paru -Si "$pkg" &>/dev/null; then
+            info "  $pkg → found in AUR, moving it there"
+            AUR_PKGS+=("$pkg")
+        else
+            warn "  $pkg → not found anywhere, skipping"
+        fi
+    done
+    # Remove missing packages from official list
+    VALIDATED_OFFICIAL=()
+    for pkg in "${ALL_OFFICIAL[@]}"; do
+        skip=false
+        for missing in "${MISSING_OFFICIAL[@]}"; do
+            if [[ "$pkg" == "$missing" ]]; then
+                skip=true
+                break
+            fi
+        done
+        if [[ "$skip" == false ]]; then
+            VALIDATED_OFFICIAL+=("$pkg")
+        fi
+    done
+    ALL_OFFICIAL=("${VALIDATED_OFFICIAL[@]}")
+fi
+ok "Package validation complete"
+
+# Install official packages
+sudo pacman -S --needed --noconfirm "${ALL_OFFICIAL[@]}"
 ok "Official packages installed"
 
-# Install AUR packages
-paru -S --needed --noconfirm "${AUR_PKGS[@]}"
+# Validate AUR packages exist before installing
+info "Validating AUR packages..."
+VALIDATED_AUR=()
+for pkg in "${AUR_PKGS[@]}"; do
+    if paru -Si "$pkg" &>/dev/null; then
+        VALIDATED_AUR+=("$pkg")
+    else
+        warn "AUR package not found: $pkg — skipping"
+    fi
+done
+
+if [[ ${#VALIDATED_AUR[@]} -gt 0 ]]; then
+    paru -S --needed --noconfirm "${VALIDATED_AUR[@]}"
+fi
 ok "AUR packages installed"
 
 # ── 4. Deploy config files ────────────────────────────────────
@@ -263,7 +322,95 @@ EOF
 
 ok "SDDM configured"
 
-# ── 8. GTK/cursor environment ─────────────────────────────────
+# ── 8. Secure Boot ─────────────────────────────────────────────
+step "Configuring Secure Boot"
+
+# Check if system is UEFI
+if [[ -d /sys/firmware/efi ]]; then
+    # Check if Secure Boot is already in Setup Mode or can be configured
+    if sbctl status 2>/dev/null | grep -q "Setup Mode:.*Enabled"; then
+        info "Secure Boot is in Setup Mode — creating and enrolling keys"
+
+        # Create custom Secure Boot keys
+        sudo sbctl create-keys
+        ok "Secure Boot keys created"
+
+        # Enroll keys (include Microsoft keys for firmware compatibility)
+        sudo sbctl enroll-keys --microsoft
+        ok "Keys enrolled (with Microsoft vendor keys for compatibility)"
+
+        # Sign all boot files that need signing
+        # Detect and sign the kernel + bootloader
+        info "Signing boot files..."
+
+        # Sign the bootloader
+        if [[ -f /boot/EFI/BOOT/BOOTX64.EFI ]]; then
+            sudo sbctl sign -s /boot/EFI/BOOT/BOOTX64.EFI
+        fi
+        if [[ -f /boot/EFI/systemd/systemd-bootx64.efi ]]; then
+            sudo sbctl sign -s /boot/EFI/systemd/systemd-bootx64.efi
+        fi
+        if [[ -f /boot/EFI/GRUB/grubx64.efi ]]; then
+            sudo sbctl sign -s /boot/EFI/GRUB/grubx64.efi
+        fi
+
+        # Sign all installed kernels
+        for kernel in /boot/vmlinuz-*; do
+            if [[ -f "$kernel" ]]; then
+                sudo sbctl sign -s "$kernel"
+                info "Signed $kernel"
+            fi
+        done
+
+        # Sign any unified kernel images
+        for uki in /boot/EFI/Linux/*.efi; do
+            if [[ -f "$uki" ]]; then
+                sudo sbctl sign -s "$uki"
+                info "Signed $uki"
+            fi
+        done
+
+        # Verify all files are signed
+        echo ""
+        sudo sbctl verify
+        ok "Secure Boot configured — enable Secure Boot in BIOS on next reboot"
+
+    elif sbctl status 2>/dev/null | grep -q "Secure Boot:.*Enabled"; then
+        ok "Secure Boot is already enabled and active"
+
+        # Still sign any unsigned files
+        if sudo sbctl verify 2>&1 | grep -q "not signed"; then
+            info "Found unsigned boot files — signing them now"
+            for unsigned in $(sudo sbctl verify 2>&1 | grep "not signed" | awk '{print $2}'); do
+                sudo sbctl sign -s "$unsigned"
+                info "Signed $unsigned"
+            done
+            ok "All boot files signed"
+        else
+            ok "All boot files are properly signed"
+        fi
+    else
+        warn "Secure Boot is not in Setup Mode."
+        echo ""
+        echo "  To enable Secure Boot with custom keys:"
+        echo "    1. Reboot into BIOS/UEFI firmware settings"
+        echo "    2. Find Secure Boot settings and switch to 'Setup Mode'"
+        echo "       (this clears existing keys — often under Security tab)"
+        echo "    3. Save and reboot back into Arch"
+        echo "    4. Re-run this script or manually run:"
+        echo "         sudo sbctl create-keys"
+        echo "         sudo sbctl enroll-keys --microsoft"
+        echo "         sudo sbctl sign -s /boot/vmlinuz-linux"
+        echo "         sudo sbctl sign -s <your-bootloader.efi>"
+        echo ""
+        info "Skipping Secure Boot setup for now"
+    fi
+else
+    warn "System is not booted in UEFI mode — Secure Boot requires UEFI"
+    info "Skipping Secure Boot setup"
+fi
+
+# ── 9. GTK/cursor environment ─────────────────────────────────
 step "Setting GTK and cursor theme"
 
 # Set cursor theme system-wide
@@ -285,10 +432,13 @@ echo -e "${GREEN}${BOLD}  peak-linux installation complete!       ${NC}"
 echo -e "${GREEN}${BOLD}══════════════════════════════════════════${NC}"
 echo ""
 echo "Next steps:"
-echo "  1. Reboot your system"
-echo "  2. Select Hyprland at the SDDM login screen"
+echo "  1. Reboot into BIOS and enable Secure Boot (if not already)"
+echo "     - If keys weren't enrolled: put Secure Boot in Setup Mode first,"
+echo "       reboot into Arch, and run: sudo sbctl create-keys && sudo sbctl enroll-keys --microsoft"
+echo "  2. Reboot and select Hyprland at the SDDM login screen"
 echo "  3. Super+D to open app launcher"
 echo "  4. Super+Enter to open terminal"
 echo ""
-echo "Key bindings are in ~/.config/hypr/hyprland.conf"
+echo "Verify Secure Boot: sbctl status"
+echo "Key bindings: ~/.config/hypr/hyprland.conf"
 echo ""
