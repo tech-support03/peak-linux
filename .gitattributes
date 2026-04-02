@@ -1,0 +1,7 @@
+# Force LF line endings for all text files (required for Linux scripts)
+* text=auto eol=lf
+
+# Binary files
+*.iso binary
+*.png binary
+*.jpg binary

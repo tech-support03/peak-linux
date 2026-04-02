@@ -1,0 +1,99 @@
+name: Build ISO
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - 'iso/**'
+      - 'configs/**'
+      - 'install.sh'
+      - '.github/workflows/build-iso.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fix line endings
+        run: |
+          find . -name '*.sh' -o -name '*.conf' -o -name '*.cfg' -o -name '*.toml' -o -name '.zshrc' -o -name '.zlogin' -o -name 'dunstrc' -o -name 'motd' -o -name 'packages.x86_64' -o -name 'pacman.conf' -o -name 'profiledef.sh' | while read f; do
+            if file "$f" | grep -q CRLF; then
+              sed -i 's/\r$//' "$f"
+              echo "Fixed: $f"
+            fi
+          done
+
+      - name: Build ISO in Arch container
+        run: |
+          docker run --rm --privileged \
+            -v "${{ github.workspace }}:/workspace" \
+            archlinux:latest \
+            bash -c '
+              set -euo pipefail
+
+              echo "::group::Setup Arch environment"
+              # Initialize pacman keyring and update
+              pacman-key --init
+              pacman-key --populate archlinux
+              pacman -Syu --noconfirm
+              pacman -S --noconfirm archiso git dosfstools e2fsprogs squashfs-tools libisoburn mtools
+              echo "::endgroup::"
+
+              echo "::group::Prepare profile"
+              cd /workspace
+
+              # Fix any remaining line endings inside container
+              find . -type f \( -name "*.sh" -o -name "*.conf" -o -name "*.cfg" -o -name "profiledef.sh" -o -name "packages.x86_64" -o -name "pacman.conf" \) -exec sed -i "s/\r$//" {} +
+
+              PROFILE_DIR="/workspace/iso/profile"
+              AIROOTFS="$PROFILE_DIR/airootfs"
+
+              # Copy peak-linux configs into airootfs
+              mkdir -p "$AIROOTFS/root/peak-linux"
+              cp -r /workspace/configs "$AIROOTFS/root/peak-linux/"
+              cp /workspace/install.sh "$AIROOTFS/root/peak-linux/"
+
+              # Copy guided installer
+              cp /workspace/iso/peak-installer.sh "$AIROOTFS/root/peak-installer.sh"
+              chmod +x "$AIROOTFS/root/peak-installer.sh"
+
+              # Set permissions on airootfs files
+              chmod 750 "$AIROOTFS/root"
+              chmod 755 "$AIROOTFS/root/peak-installer.sh"
+
+              echo "::endgroup::"
+
+              echo "::group::Build ISO"
+              mkdir -p /workspace/iso/out /tmp/peak-build
+
+              mkarchiso -v \
+                -w /tmp/peak-build \
+                -o /workspace/iso/out \
+                "$PROFILE_DIR"
+
+              echo "::endgroup::"
+
+              echo "::group::Build results"
+              ls -lh /workspace/iso/out/
+              echo "::endgroup::"
+            '
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: peak-linux-iso
+          path: iso/out/*.iso
+          retention-days: 7
+          compression-level: 0
+
+      - name: Create release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: iso/out/*.iso
