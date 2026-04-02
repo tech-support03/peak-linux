@@ -1,0 +1,118 @@
+# ── Base system (required for live ISO) ────────────────────────
+base
+base-devel
+linux
+linux-firmware
+linux-headers
+mkinitcpio
+mkinitcpio-archiso
+syslinux
+
+# ── Bootloader ─────────────────────────────────────────────────
+grub
+efibootmgr
+os-prober
+
+# ── Arch installer essentials ─────────────────────────────────
+arch-install-scripts
+dosfstools
+e2fsprogs
+btrfs-progs
+ntfs-3g
+parted
+gptfdisk
+
+# ── Networking (needed in live env) ────────────────────────────
+networkmanager
+network-manager-applet
+iwd
+dhcpcd
+openssh
+wget
+curl
+
+# ── Hyprland + Wayland ────────────────────────────────────────
+hyprland
+hyprlock
+hypridle
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+qt5-wayland
+qt6-wayland
+
+# ── UI components ──────────────────────────────────────────────
+waybar
+wofi
+dunst
+libnotify
+
+# ── Terminal & apps ────────────────────────────────────────────
+kitty
+thunar
+gvfs
+imv
+mpv
+firefox
+
+# ── Audio ──────────────────────────────────────────────────────
+pipewire
+pipewire-alsa
+pipewire-pulse
+wireplumber
+
+# ── Bluetooth ─────────────────────────────────────────────────
+bluez
+bluez-utils
+
+# ── System utilities ──────────────────────────────────────────
+brightnessctl
+playerctl
+polkit-gnome
+gnome-keyring
+grim
+slurp
+wl-clipboard
+cliphist
+swww
+sbctl
+
+# ── SDDM + dependencies ──────────────────────────────────────
+sddm
+qt5-graphicaleffects
+qt5-quickcontrols2
+qt5-svg
+
+# ── Developer tools ───────────────────────────────────────────
+neovim
+git
+lazygit
+ripgrep
+fd
+fzf
+tree
+unzip
+python
+nodejs
+npm
+
+# ── Shell ──────────────────────────────────────────────────────
+zsh
+starship
+eza
+bat
+zoxide
+
+# ── Fonts ──────────────────────────────────────────────────────
+ttf-jetbrains-mono-nerd
+noto-fonts
+noto-fonts-emoji
+
+# ── Theming ────────────────────────────────────────────────────
+nwg-look
+papirus-icon-theme
+
+# ── Misc ───────────────────────────────────────────────────────
+sudo
+nano
+reflector
+man-db

@@ -1,0 +1,15 @@
+
+
+    ┌─────────────────────────────────────────┐
+    │            peak-linux                   │
+    │     macOS-themed Arch with Hyprland     │
+    └─────────────────────────────────────────┘
+
+    Run the installer:   peak-installer.sh
+
+    Useful commands:
+      lsblk          — list drives
+      ip a           — check network
+      nmtui          — connect to WiFi
+      iwctl          — WiFi (alternative)
+
