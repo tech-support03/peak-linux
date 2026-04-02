@@ -73,7 +73,6 @@ PKGS_HYPRLAND=(
     hyprland
     hyprlock
     hypridle
-    hyprpaper
     xdg-desktop-portal-hyprland
     xdg-desktop-portal-gtk
     qt5-wayland
@@ -161,6 +160,14 @@ PKGS_THEME=(
     papirus-icon-theme
 )
 
+# SDDM and its theme dependencies
+PKGS_SDDM=(
+    sddm
+    qt5-graphicaleffects
+    qt5-quickcontrols2
+    qt5-svg
+)
+
 # AUR packages (not in official repos — installed via paru)
 AUR_PKGS=(
     inter-font
@@ -181,6 +188,7 @@ ALL_OFFICIAL=(
     "${PKGS_SHELL[@]}"
     "${PKGS_FONTS[@]}"
     "${PKGS_THEME[@]}"
+    "${PKGS_SDDM[@]}"
 )
 
 # Validate official packages exist in repos before installing
@@ -287,15 +295,21 @@ ok "Configs deployed"
 # ── 5. Shell setup ─────────────────────────────────────────────
 step "Configuring shell"
 
-# Set zsh as default shell
-if [[ "$SHELL" != *"zsh"* ]]; then
-    chsh -s "$(which zsh)"
-    ok "Default shell changed to zsh"
-fi
-
-# Deploy zsh config
+# Deploy zsh and starship configs BEFORE changing shell
 deploy "$CONFIG_DIR/zsh/.zshrc"        "$HOME/.zshrc"
 deploy "$CONFIG_DIR/starship/starship.toml" "$HOME/.config/starship.toml"
+
+# Verify zsh exists, then set as default
+if command -v zsh &>/dev/null; then
+    if [[ "$SHELL" != *"zsh"* ]]; then
+        chsh -s "$(which zsh)"
+        ok "Default shell changed to zsh"
+    fi
+else
+    warn "zsh not found — kitty will fall back to /bin/bash"
+    # Patch kitty config to use bash if zsh is missing
+    sed -i 's|shell /bin/zsh --login|shell /bin/bash --login|' "$HOME/.config/kitty/kitty.conf"
+fi
 
 ok "Shell configured"
 
@@ -311,14 +325,39 @@ sudo systemctl enable sddm 2>/dev/null || true
 
 ok "Services enabled"
 
-# ── 7. SDDM theme ─────────────────────────────────────────────
+# ── 7. SDDM setup ─────────────────────────────────────────────
 step "Configuring SDDM"
 
+# Disable any other display manager that might conflict
+for dm in gdm lightdm lxdm ly; do
+    sudo systemctl disable "$dm" 2>/dev/null || true
+done
+
+# Main SDDM config
 sudo mkdir -p /etc/sddm.conf.d
-sudo tee /etc/sddm.conf.d/theme.conf > /dev/null << 'EOF'
+sudo tee /etc/sddm.conf.d/default.conf > /dev/null << 'EOF'
+[General]
+DisplayServer=wayland
+GreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell
+
 [Theme]
 Current=sugar-candy
+
+[Wayland]
+CompositorCommand=kwin_wayland --drm --no-lockscreen --no-global-shortcuts --locale1
 EOF
+
+# Fallback: if sugar-candy is missing, use breeze
+if [[ ! -d /usr/share/sddm/themes/sugar-candy ]]; then
+    warn "sugar-candy theme not found, falling back to default"
+    sudo tee /etc/sddm.conf.d/default.conf > /dev/null << 'EOF'
+[General]
+DisplayServer=wayland
+
+[Wayland]
+CompositorCommand=kwin_wayland --drm --no-lockscreen --no-global-shortcuts --locale1
+EOF
+fi
 
 ok "SDDM configured"
 

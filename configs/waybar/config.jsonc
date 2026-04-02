@@ -48,7 +48,7 @@
         },
         "on-click": "activate",
         "sort-by-number": true,
-        "persistent-workspaces": {
+        "persistent_workspaces": {
             "*": 5
         }
     },
