@@ -50,6 +50,20 @@ cp "$PROJECT_ROOT/install.sh" "$AIROOTFS/root/peak-linux/"
 # Copy the guided installer
 cp "$SCRIPT_DIR/peak-installer.sh" "$AIROOTFS/root/peak-installer.sh"
 chmod +x "$AIROOTFS/root/peak-installer.sh"
+chmod 400 "$AIROOTFS/etc/shadow"
+
+# Enable services in the live environment via symlinks
+mkdir -p "$AIROOTFS/etc/systemd/system/multi-user.target.wants"
+mkdir -p "$AIROOTFS/etc/systemd/system/network-online.target.wants"
+
+ln -sf /usr/lib/systemd/system/NetworkManager.service \
+    "$AIROOTFS/etc/systemd/system/multi-user.target.wants/NetworkManager.service"
+ln -sf /usr/lib/systemd/system/NetworkManager-wait-online.service \
+    "$AIROOTFS/etc/systemd/system/network-online.target.wants/NetworkManager-wait-online.service"
+ln -sf /usr/lib/systemd/system/iwd.service \
+    "$AIROOTFS/etc/systemd/system/multi-user.target.wants/iwd.service"
+ln -sf /usr/lib/systemd/system/sshd.service \
+    "$AIROOTFS/etc/systemd/system/multi-user.target.wants/sshd.service"
 
 ok "Profile prepared"
 
