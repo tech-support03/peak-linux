@@ -22,12 +22,8 @@ jobs:
 
       - name: Fix line endings
         run: |
-          find . -name '*.sh' -o -name '*.conf' -o -name '*.cfg' -o -name '*.toml' -o -name '.zshrc' -o -name '.zlogin' -o -name 'dunstrc' -o -name 'motd' -o -name 'packages.x86_64' -o -name 'pacman.conf' -o -name 'profiledef.sh' | while read f; do
-            if file "$f" | grep -q CRLF; then
-              sed -i 's/\r$//' "$f"
-              echo "Fixed: $f"
-            fi
-          done
+          # Convert ALL text files to LF (git on Windows may have added CRLF)
+          find . -path ./.git -prune -o -type f -print0 | xargs -0 sed -i 's/\r$//'
 
       - name: Build ISO in Arch container
         run: |
@@ -48,8 +44,8 @@ jobs:
               echo "::group::Prepare profile"
               cd /workspace
 
-              # Fix any remaining line endings inside container
-              find . -type f \( -name "*.sh" -o -name "*.conf" -o -name "*.cfg" -o -name "profiledef.sh" -o -name "packages.x86_64" -o -name "pacman.conf" \) -exec sed -i "s/\r$//" {} +
+              # Fix any remaining CRLF line endings (all text files)
+              find . -path ./.git -prune -o -type f -print0 | xargs -0 sed -i "s/\r$//"
 
               PROFILE_DIR="/workspace/iso/profile"
               AIROOTFS="$PROFILE_DIR/airootfs"
