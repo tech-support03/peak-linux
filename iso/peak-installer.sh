@@ -31,6 +31,13 @@ MOUNT="/mnt"
 [[ $EUID -eq 0 ]] || die "Run this installer as root"
 [[ -d /run/archiso ]] || warn "Not running from the live ISO — proceed with caution"
 
+# Detect UEFI vs BIOS boot mode
+if [[ -d /sys/firmware/efi/efivars ]]; then
+    BOOT_MODE="uefi"
+else
+    BOOT_MODE="bios"
+fi
+
 clear
 echo -e "${BOLD}"
 cat << 'BANNER'
@@ -46,11 +53,17 @@ cat << 'BANNER'
 
 BANNER
 echo -e "${NC}"
+echo "  Boot mode: ${BOOT_MODE^^}"
+echo ""
 echo "  This installer will:"
 echo "    1. Partition and format your disk"
 echo "    2. Install Arch Linux base system"
 echo "    3. Configure Hyprland + macOS theme"
+if [[ "$BOOT_MODE" == "uefi" ]]; then
 echo "    4. Set up developer tools + Secure Boot"
+else
+echo "    4. Set up developer tools"
+fi
 echo ""
 divider
 echo ""
@@ -183,50 +196,75 @@ read -r SWAP_SIZE
 SWAP_SIZE="${SWAP_SIZE:-4}"
 
 echo ""
+info "Detected boot mode: ${BOOT_MODE^^}"
 info "Partitioning $TARGET_DISK..."
 
-# Wipe and create GPT partition table
-sgdisk --zap-all "$TARGET_DISK"
-sgdisk --clear "$TARGET_DISK"
+EFI_PART=""
+BOOT_PART=""
+SWAP_PART=""
 
-# Partition layout:
-#   1: EFI System Partition (512M)
-#   2: Swap (optional)
-#   3: Root (remaining space)
-PART_NUM=0
+if [[ "$BOOT_MODE" == "uefi" ]]; then
+    # GPT partition table for UEFI
+    sgdisk --zap-all "$TARGET_DISK"
+    sgdisk --clear "$TARGET_DISK"
 
-# EFI partition
-PART_NUM=$((PART_NUM + 1))
-EFI_PART_NUM=$PART_NUM
-sgdisk -n "${PART_NUM}:0:+512M" -t "${PART_NUM}:ef00" -c "${PART_NUM}:EFI" "$TARGET_DISK"
-EFI_PART="${PART_PREFIX}${EFI_PART_NUM}"
+    # Partition layout:
+    #   1: EFI System Partition (512M)
+    #   2: Swap (optional)
+    #   3: Root (remaining space)
+    PART_NUM=0
 
-# Swap partition
-if [[ "$SWAP_SIZE" -gt 0 ]]; then
     PART_NUM=$((PART_NUM + 1))
-    SWAP_PART_NUM=$PART_NUM
-    sgdisk -n "${PART_NUM}:0:+${SWAP_SIZE}G" -t "${PART_NUM}:8200" -c "${PART_NUM}:swap" "$TARGET_DISK"
-    SWAP_PART="${PART_PREFIX}${SWAP_PART_NUM}"
-else
-    SWAP_PART=""
-fi
+    EFI_PART_NUM=$PART_NUM
+    sgdisk -n "${PART_NUM}:0:+512M" -t "${PART_NUM}:ef00" -c "${PART_NUM}:EFI" "$TARGET_DISK"
+    EFI_PART="${PART_PREFIX}${EFI_PART_NUM}"
 
-# Root partition
-PART_NUM=$((PART_NUM + 1))
-ROOT_PART_NUM=$PART_NUM
-sgdisk -n "${PART_NUM}:0:0" -t "${PART_NUM}:8300" -c "${PART_NUM}:root" "$TARGET_DISK"
-ROOT_PART="${PART_PREFIX}${ROOT_PART_NUM}"
+    if [[ "$SWAP_SIZE" -gt 0 ]]; then
+        PART_NUM=$((PART_NUM + 1))
+        SWAP_PART_NUM=$PART_NUM
+        sgdisk -n "${PART_NUM}:0:+${SWAP_SIZE}G" -t "${PART_NUM}:8200" -c "${PART_NUM}:swap" "$TARGET_DISK"
+        SWAP_PART="${PART_PREFIX}${SWAP_PART_NUM}"
+    fi
+
+    PART_NUM=$((PART_NUM + 1))
+    ROOT_PART_NUM=$PART_NUM
+    sgdisk -n "${PART_NUM}:0:0" -t "${PART_NUM}:8300" -c "${PART_NUM}:root" "$TARGET_DISK"
+    ROOT_PART="${PART_PREFIX}${ROOT_PART_NUM}"
+else
+    # MBR partition table for BIOS
+    sgdisk --zap-all "$TARGET_DISK" 2>/dev/null || true
+
+    # Partition layout (MBR via sfdisk):
+    #   1: Swap (optional)
+    #   2: Root (remaining space)
+    SFDISK_INPUT=""
+    PART_NUM=0
+
+    if [[ "$SWAP_SIZE" -gt 0 ]]; then
+        PART_NUM=$((PART_NUM + 1))
+        SFDISK_INPUT+="size=${SWAP_SIZE}G, type=82\n"
+        SWAP_PART="${PART_PREFIX}${PART_NUM}"
+    fi
+
+    PART_NUM=$((PART_NUM + 1))
+    SFDISK_INPUT+="type=83\n"
+    ROOT_PART="${PART_PREFIX}${PART_NUM}"
+
+    echo -e "$SFDISK_INPUT" | sfdisk --force "$TARGET_DISK"
+fi
 
 # Reload partition table
 partprobe "$TARGET_DISK"
 sleep 2
 
-ok "Partitioned: EFI=${EFI_PART} Swap=${SWAP_PART:-none} Root=${ROOT_PART}"
+ok "Partitioned: Boot=${EFI_PART:-MBR} Swap=${SWAP_PART:-none} Root=${ROOT_PART}"
 
 # ── Format partitions ─────────────────────────────────────────
 info "Formatting partitions..."
 
-mkfs.fat -F32 "$EFI_PART"
+if [[ -n "$EFI_PART" ]]; then
+    mkfs.fat -F32 "$EFI_PART"
+fi
 
 if [[ -n "$SWAP_PART" ]]; then
     mkswap "$SWAP_PART"
@@ -264,8 +302,10 @@ case "$FILESYSTEM" in
         ;;
 esac
 
-mkdir -p "$MOUNT/boot/efi"
-mount "$EFI_PART" "$MOUNT/boot/efi"
+if [[ -n "$EFI_PART" ]]; then
+    mkdir -p "$MOUNT/boot/efi"
+    mount "$EFI_PART" "$MOUNT/boot/efi"
+fi
 
 ok "Filesystems mounted"
 
@@ -276,6 +316,11 @@ divider
 # STEP 3: Install base system
 # ══════════════════════════════════════════════════════════════
 step "Installing Base System"
+
+# Refresh pacman keyring (ISO keys may be outdated)
+info "Initializing pacman keyring..."
+pacman-key --init
+pacman-key --populate archlinux
 
 # Optimize mirrors
 info "Selecting fastest mirrors..."
@@ -354,7 +399,11 @@ sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf
 pacman -Sy --noconfirm
 
 # ── Bootloader (GRUB) ─────────────────────────────────────────
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=peak-linux --recheck
+if [[ "$BOOT_MODE" == "uefi" ]]; then
+    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=peak-linux --recheck
+else
+    grub-install --target=i386-pc --recheck "$TARGET_DISK"
+fi
 sed -i 's/GRUB_TIMEOUT=5/GRUB_TIMEOUT=3/' /etc/default/grub
 sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet splash"/' /etc/default/grub
 grub-mkconfig -o /boot/grub/grub.cfg
@@ -470,14 +519,16 @@ chown -R "$USERNAME:$USERNAME" "\$USER_HOME"
 
 ok "Configs deployed to \$USER_HOME"
 
-# ── Secure Boot prep ──────────────────────────────────────────
-info "Preparing Secure Boot keys (will be enrolled on first boot if Setup Mode is active)..."
-sbctl create-keys 2>/dev/null || true
-sbctl sign -s /boot/efi/EFI/peak-linux/grubx64.efi 2>/dev/null || true
-for kernel in /boot/vmlinuz-*; do
-    sbctl sign -s "\$kernel" 2>/dev/null || true
-done
-ok "Secure Boot files signed (enable Setup Mode in BIOS to enroll keys)"
+# ── Secure Boot prep (UEFI only) ──────────────────────────────
+if [[ "$BOOT_MODE" == "uefi" ]]; then
+    info "Preparing Secure Boot keys (will be enrolled on first boot if Setup Mode is active)..."
+    sbctl create-keys 2>/dev/null || true
+    sbctl sign -s /boot/efi/EFI/peak-linux/grubx64.efi 2>/dev/null || true
+    for kernel in /boot/vmlinuz-*; do
+        sbctl sign -s "\$kernel" 2>/dev/null || true
+    done
+    ok "Secure Boot files signed (enable Setup Mode in BIOS to enroll keys)"
+fi
 
 # ── Cleanup ────────────────────────────────────────────────────
 rm -rf /root/peak-linux /root/peak-setup.sh
@@ -523,11 +574,13 @@ echo "  Next steps:"
 echo "    1. Remove the USB drive"
 echo "    2. Reboot: type 'reboot'"
 echo "    3. Log in at SDDM → Hyprland session"
+if [[ "$BOOT_MODE" == "uefi" ]]; then
 echo ""
 echo "  For Secure Boot:"
 echo "    - Enter BIOS → enable Setup Mode"
 echo "    - Boot into Arch → run: sudo sbctl enroll-keys --microsoft"
 echo "    - Reboot → enable Secure Boot in BIOS"
+fi
 echo ""
 echo "  Quick start:"
 echo "    Super+Enter  → Terminal"
