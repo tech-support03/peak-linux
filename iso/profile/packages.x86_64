@@ -76,11 +76,8 @@ cliphist
 swww
 sbctl
 
-# ── SDDM + dependencies ──────────────────────────────────────
-sddm
-qt5-graphicaleffects
-qt5-quickcontrols2
-qt5-svg
+# ── Login manager ─────────────────────────────────────────────
+ly
 
 # ── Developer tools ───────────────────────────────────────────
 neovim

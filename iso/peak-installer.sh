@@ -424,8 +424,7 @@ pacman -S --needed --noconfirm \
     waybar wofi dunst libnotify \
     kitty thunar gvfs imv mpv firefox \
     brightnessctl playerctl polkit-gnome gnome-keyring \
-    grim slurp wl-clipboard cliphist swww sbctl \
-    sddm qt5-graphicaleffects qt5-quickcontrols2 qt5-svg \
+    grim slurp wl-clipboard cliphist swww sbctl ly \
     lazygit ripgrep fd fzf tree unzip wget curl openssh npm nodejs python \
     starship eza bat zoxide \
     ttf-jetbrains-mono-nerd noto-fonts noto-fonts-emoji \
@@ -433,18 +432,9 @@ pacman -S --needed --noconfirm \
 
 ok "Desktop packages installed"
 
-# ── SDDM ──────────────────────────────────────────────────────
-systemctl enable sddm
-mkdir -p /etc/sddm.conf.d
-cat > /etc/sddm.conf.d/default.conf << SDDMEOF
-[General]
-DisplayServer=wayland
-GreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell
-
-[Wayland]
-CompositorCommand=kwin_wayland --drm --no-lockscreen --no-global-shortcuts --locale1
-SDDMEOF
-ok "SDDM enabled"
+# ── ly (login manager) ────────────────────────────────────────
+systemctl enable ly
+ok "ly login manager enabled"
 
 # ── Install paru (AUR helper) as the user ─────────────────────
 info "Installing paru (AUR helper)..."
@@ -465,16 +455,9 @@ sudo -u "$USERNAME" paru -S --needed --noconfirm \
     nwg-dock-hyprland \
     whitesur-gtk-theme \
     whitesur-icon-theme \
-    whitesur-cursor-theme \
-    sddm-sugar-candy-git || {
+    whitesur-cursor-theme || {
     echo "[WARN] Some AUR packages may have failed — you can install them later"
 }
-
-# Apply sugar-candy theme if installed
-if [[ -d /usr/share/sddm/themes/sugar-candy ]]; then
-    sed -i '/\[Theme\]/a Current=sugar-candy' /etc/sddm.conf.d/default.conf
-    ok "SDDM sugar-candy theme applied"
-fi
 
 ok "AUR packages installed"
 
@@ -573,7 +556,7 @@ echo -e "${NC}"
 echo "  Next steps:"
 echo "    1. Remove the USB drive"
 echo "    2. Reboot: type 'reboot'"
-echo "    3. Log in at SDDM → Hyprland session"
+echo "    3. Log in at ly → select Hyprland"
 if [[ "$BOOT_MODE" == "uefi" ]]; then
 echo ""
 echo "  For Secure Boot:"
