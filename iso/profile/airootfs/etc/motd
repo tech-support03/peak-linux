@@ -12,4 +12,5 @@
       ip a           — check network
       nmtui          — connect to WiFi
       iwctl          — WiFi (alternative)
+      dhcpcd         — wired DHCP fallback
 

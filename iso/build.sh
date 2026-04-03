@@ -64,6 +64,10 @@ ln -sf /usr/lib/systemd/system/iwd.service \
     "$AIROOTFS/etc/systemd/system/multi-user.target.wants/iwd.service"
 ln -sf /usr/lib/systemd/system/sshd.service \
     "$AIROOTFS/etc/systemd/system/multi-user.target.wants/sshd.service"
+ln -sf /usr/lib/systemd/system/dhcpcd.service \
+    "$AIROOTFS/etc/systemd/system/multi-user.target.wants/dhcpcd.service"
+ln -sf /usr/lib/systemd/system/systemd-resolved.service \
+    "$AIROOTFS/etc/systemd/system/multi-user.target.wants/systemd-resolved.service"
 
 ok "Profile prepared"
 
