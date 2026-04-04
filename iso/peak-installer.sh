@@ -437,7 +437,7 @@ if systemd-detect-virt -q 2>/dev/null; then
     info "Detected VM: \$VIRT_TYPE — installing guest tools..."
     case "\$VIRT_TYPE" in
         vmware)
-            pacman -S --needed --noconfirm open-vm-tools xf86-video-vmware
+            pacman -S --needed --noconfirm open-vm-tools
             systemctl enable vmtoolsd
             systemctl enable vmware-vmblock-fuse
             ;;
