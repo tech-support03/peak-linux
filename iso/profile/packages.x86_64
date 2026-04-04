@@ -76,6 +76,12 @@ cliphist
 swww
 sbctl
 
+# ── GPU / display ─────────────────────────────────────────────
+mesa
+vulkan-swrast
+open-vm-tools
+xf86-video-vmware
+
 # ── Login manager ─────────────────────────────────────────────
 ly
 

@@ -421,6 +421,7 @@ pacman -S --needed --noconfirm \
     hyprland hyprlock hypridle \
     xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
     qt5-wayland qt6-wayland \
+    mesa vulkan-swrast \
     waybar wofi dunst libnotify \
     kitty thunar gvfs imv mpv firefox \
     brightnessctl playerctl polkit-gnome gnome-keyring \
@@ -429,6 +430,28 @@ pacman -S --needed --noconfirm \
     starship eza bat zoxide \
     ttf-jetbrains-mono-nerd noto-fonts noto-fonts-emoji \
     nwg-look papirus-icon-theme
+
+# ── GPU / VM guest tools (auto-detect) ────────────────────────
+if systemd-detect-virt -q 2>/dev/null; then
+    VIRT_TYPE=\$(systemd-detect-virt)
+    info "Detected VM: \$VIRT_TYPE — installing guest tools..."
+    case "\$VIRT_TYPE" in
+        vmware)
+            pacman -S --needed --noconfirm open-vm-tools xf86-video-vmware
+            systemctl enable vmtoolsd
+            systemctl enable vmware-vmblock-fuse
+            ;;
+        oracle)
+            pacman -S --needed --noconfirm virtualbox-guest-utils
+            systemctl enable vboxservice
+            ;;
+        qemu|kvm)
+            pacman -S --needed --noconfirm qemu-guest-agent spice-vdagent
+            systemctl enable qemu-guest-agent
+            ;;
+    esac
+    ok "VM guest tools installed"
+fi
 
 ok "Desktop packages installed"
 
