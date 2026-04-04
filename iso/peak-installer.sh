@@ -424,7 +424,7 @@ pacman -S --needed --noconfirm \
     waybar wofi dunst libnotify \
     kitty thunar gvfs imv mpv firefox \
     brightnessctl playerctl polkit-gnome gnome-keyring \
-    grim slurp wl-clipboard cliphist swww sbctl ly \
+    grim slurp wl-clipboard cliphist swww ly \
     lazygit ripgrep fd fzf tree unzip wget curl openssh npm nodejs python \
     starship eza bat zoxide \
     ttf-jetbrains-mono-nerd noto-fonts noto-fonts-emoji \
@@ -433,8 +433,9 @@ pacman -S --needed --noconfirm \
 ok "Desktop packages installed"
 
 # ── ly (login manager) ────────────────────────────────────────
-systemctl enable ly
-ok "ly login manager enabled"
+systemctl enable ly@tty2
+systemctl disable getty@tty2 2>/dev/null || true
+ok "ly login manager enabled on tty2"
 
 # ── Install paru (AUR helper) as the user ─────────────────────
 info "Installing paru (AUR helper)..."
@@ -504,7 +505,8 @@ ok "Configs deployed to \$USER_HOME"
 
 # ── Secure Boot prep (UEFI only) ──────────────────────────────
 if [[ "$BOOT_MODE" == "uefi" ]]; then
-    info "Preparing Secure Boot keys (will be enrolled on first boot if Setup Mode is active)..."
+    info "Installing and configuring Secure Boot..."
+    pacman -S --needed --noconfirm sbctl
     sbctl create-keys 2>/dev/null || true
     sbctl sign -s /boot/efi/EFI/peak-linux/grubx64.efi 2>/dev/null || true
     for kernel in /boot/vmlinuz-*; do
