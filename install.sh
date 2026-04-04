@@ -35,11 +35,11 @@ fi
 echo -e "${BOLD}"
 echo "  ┌─────────────────────────────────────┐"
 echo "  │         peak-linux installer         │"
-echo "  │   macOS-themed Hyprland for Arch     │"
+echo "  │  macOS-themed Hyprland+bspwm Arch   │"
 echo "  └─────────────────────────────────────┘"
 echo -e "${NC}"
 echo "This will install and configure:"
-echo "  • Hyprland compositor + Waybar + wofi"
+echo "  • Hyprland (Wayland) + bspwm (X11) sessions"
 echo "  • macOS theme (WhiteSur GTK + icons)"
 echo "  • Developer tools (neovim, git, zsh)"
 echo "  • PipeWire audio + essential system utils"
@@ -77,6 +77,23 @@ PKGS_HYPRLAND=(
     xdg-desktop-portal-gtk
     qt5-wayland
     qt6-wayland
+)
+
+# bspwm + X11 session
+PKGS_BSPWM=(
+    bspwm
+    sxhkd
+    picom
+    polybar
+    rofi
+    plank
+    feh
+    maim
+    xclip
+    xorg-server
+    xorg-xinit
+    xorg-xsetroot
+    xorg-xrandr
 )
 
 # Bar, launcher, notifications
@@ -160,12 +177,9 @@ PKGS_THEME=(
     papirus-icon-theme
 )
 
-# SDDM and its theme dependencies
-PKGS_SDDM=(
-    sddm
-    qt5-graphicaleffects
-    qt5-quickcontrols2
-    qt5-svg
+# Login manager
+PKGS_LOGIN=(
+    ly
 )
 
 # AUR packages (not in official repos — installed via paru)
@@ -175,12 +189,13 @@ AUR_PKGS=(
     whitesur-gtk-theme
     whitesur-icon-theme
     whitesur-cursor-theme
-    sddm-sugar-candy-git
+    betterlockscreen
 )
 
 # Combine all official packages
 ALL_OFFICIAL=(
     "${PKGS_HYPRLAND[@]}"
+    "${PKGS_BSPWM[@]}"
     "${PKGS_UI[@]}"
     "${PKGS_APPS[@]}"
     "${PKGS_SYSTEM[@]}"
@@ -188,7 +203,7 @@ ALL_OFFICIAL=(
     "${PKGS_SHELL[@]}"
     "${PKGS_FONTS[@]}"
     "${PKGS_THEME[@]}"
-    "${PKGS_SDDM[@]}"
+    "${PKGS_LOGIN[@]}"
 )
 
 # Validate official packages exist in repos before installing
@@ -281,6 +296,23 @@ deploy "$CONFIG_DIR/kitty"        "$HOME/.config/kitty"
 # dunst
 deploy "$CONFIG_DIR/dunst"        "$HOME/.config/dunst"
 
+# bspwm
+deploy "$CONFIG_DIR/bspwm"        "$HOME/.config/bspwm"
+chmod +x "$HOME/.config/bspwm/bspwmrc"
+
+# sxhkd
+deploy "$CONFIG_DIR/sxhkd"        "$HOME/.config/sxhkd"
+
+# picom
+deploy "$CONFIG_DIR/picom"        "$HOME/.config/picom"
+
+# polybar
+deploy "$CONFIG_DIR/polybar"      "$HOME/.config/polybar"
+chmod +x "$HOME/.config/polybar/launch.sh"
+
+# rofi
+deploy "$CONFIG_DIR/rofi"         "$HOME/.config/rofi"
+
 # GTK
 deploy "$CONFIG_DIR/gtk-3.0"      "$HOME/.config/gtk-3.0"
 
@@ -320,48 +352,24 @@ sudo systemctl enable --now NetworkManager 2>/dev/null || true
 sudo systemctl enable --now bluetooth 2>/dev/null || true
 sudo systemctl enable --now pipewire pipewire-pulse wireplumber 2>/dev/null || true
 
-# Enable SDDM
-sudo systemctl enable sddm 2>/dev/null || true
-
-ok "Services enabled"
-
-# ── 7. SDDM setup ─────────────────────────────────────────────
-step "Configuring SDDM"
+# Enable ly login manager
+sudo systemctl enable ly@tty2 2>/dev/null || true
+sudo systemctl disable getty@tty2 2>/dev/null || true
 
 # Disable any other display manager that might conflict
-for dm in gdm lightdm lxdm ly; do
+for dm in gdm lightdm lxdm sddm; do
     sudo systemctl disable "$dm" 2>/dev/null || true
 done
 
-# Main SDDM config
-sudo mkdir -p /etc/sddm.conf.d
-sudo tee /etc/sddm.conf.d/default.conf > /dev/null << 'EOF'
-[General]
-DisplayServer=wayland
-GreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell
-
-[Theme]
-Current=sugar-candy
-
-[Wayland]
-CompositorCommand=kwin_wayland --drm --no-lockscreen --no-global-shortcuts --locale1
-EOF
-
-# Fallback: if sugar-candy is missing, use breeze
-if [[ ! -d /usr/share/sddm/themes/sugar-candy ]]; then
-    warn "sugar-candy theme not found, falling back to default"
-    sudo tee /etc/sddm.conf.d/default.conf > /dev/null << 'EOF'
-[General]
-DisplayServer=wayland
-
-[Wayland]
-CompositorCommand=kwin_wayland --drm --no-lockscreen --no-global-shortcuts --locale1
-EOF
+# Install bspwm X11 session entry for ly/display managers
+sudo mkdir -p /usr/share/xsessions
+if [[ ! -f /usr/share/xsessions/bspwm.desktop ]]; then
+    sudo cp "$CONFIG_DIR/bspwm/peak-bspwm.desktop" /usr/share/xsessions/bspwm.desktop
 fi
 
-ok "SDDM configured"
+ok "Services enabled"
 
-# ── 8. Secure Boot ─────────────────────────────────────────────
+# ── 7. Secure Boot ─────────────────────────────────────────────
 step "Configuring Secure Boot"
 
 # Check if system is UEFI
@@ -449,7 +457,7 @@ else
     info "Skipping Secure Boot setup"
 fi
 
-# ── 9. GTK/cursor environment ─────────────────────────────────
+# ── 8. GTK/cursor environment ─────────────────────────────────
 step "Setting GTK and cursor theme"
 
 # Set cursor theme system-wide
@@ -474,10 +482,13 @@ echo "Next steps:"
 echo "  1. Reboot into BIOS and enable Secure Boot (if not already)"
 echo "     - If keys weren't enrolled: put Secure Boot in Setup Mode first,"
 echo "       reboot into Arch, and run: sudo sbctl create-keys && sudo sbctl enroll-keys --microsoft"
-echo "  2. Reboot and select Hyprland at the SDDM login screen"
+echo "  2. Reboot and select a session at the ly login screen:"
+echo "     • Hyprland (Wayland) — modern, smooth animations"
+echo "     • bspwm (X11) — lightweight, maximum compatibility"
 echo "  3. Super+D to open app launcher"
 echo "  4. Super+Enter to open terminal"
 echo ""
 echo "Verify Secure Boot: sbctl status"
-echo "Key bindings: ~/.config/hypr/hyprland.conf"
+echo "Hyprland config: ~/.config/hypr/hyprland.conf"
+echo "bspwm config:    ~/.config/bspwm/bspwmrc"
 echo ""

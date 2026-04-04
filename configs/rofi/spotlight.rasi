@@ -1,0 +1,100 @@
+/* peak-linux — Rofi Spotlight Theme
+ * macOS Spotlight-inspired launcher appearance */
+
+* {
+    bg:         #1e1e1ecc;
+    bg-alt:     #31324488;
+    fg:         #ffffff;
+    fg-dim:     #99ffffff;
+    accent:     #007AFF66;
+    border-cl:  #ffffff1a;
+    radius:     16px;
+    font:       "Inter 14";
+}
+
+window {
+    width:              500px;
+    transparency:       "real";
+    background-color:   @bg;
+    border:             1px solid;
+    border-color:       @border-cl;
+    border-radius:      @radius;
+    padding:            0;
+    location:           center;
+    anchor:             center;
+}
+
+mainbox {
+    background-color:   transparent;
+    children:           [ inputbar, listview ];
+    spacing:            0;
+    padding:            0;
+}
+
+inputbar {
+    background-color:   transparent;
+    children:           [ textbox-prompt, entry ];
+    padding:            16px 16px 8px 16px;
+    spacing:            8px;
+}
+
+textbox-prompt {
+    str:                " ";
+    font:               "JetBrainsMono Nerd Font 16";
+    background-color:   transparent;
+    text-color:         @fg-dim;
+    expand:             false;
+    padding:            8px 4px 8px 12px;
+    vertical-align:     0.5;
+}
+
+entry {
+    background-color:   @bg-alt;
+    text-color:         @fg;
+    border:             1px solid;
+    border-color:       @border-cl;
+    border-radius:      10px;
+    padding:            10px 16px;
+    placeholder:        "Search...";
+    placeholder-color:  @fg-dim;
+    cursor:             text;
+}
+
+listview {
+    background-color:   transparent;
+    columns:            1;
+    lines:              7;
+    spacing:            2px;
+    padding:            4px 8px 12px 8px;
+    scrollbar:          false;
+    fixed-height:       false;
+    dynamic:            true;
+    cycle:              false;
+}
+
+element {
+    background-color:   transparent;
+    text-color:         @fg;
+    padding:            8px 12px;
+    border-radius:      8px;
+    spacing:            12px;
+    cursor:             pointer;
+}
+
+element selected.normal {
+    background-color:   @accent;
+    text-color:         @fg;
+}
+
+element-icon {
+    size:               24px;
+    background-color:   transparent;
+    cursor:             inherit;
+}
+
+element-text {
+    background-color:   transparent;
+    text-color:         inherit;
+    cursor:             inherit;
+    vertical-align:     0.5;
+}

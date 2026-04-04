@@ -1,0 +1,15 @@
+/* peak-linux — Rofi Configuration */
+
+configuration {
+    modi: "drun,run,window";
+    show-icons: true;
+    icon-theme: "WhiteSur";
+    font: "Inter 12";
+    drun-display-format: "{name}";
+    display-drun: "";
+    display-run: "";
+    display-window: "";
+    terminal: "kitty";
+}
+
+@theme "spotlight"

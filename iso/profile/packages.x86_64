@@ -40,6 +40,21 @@ xdg-desktop-portal-gtk
 qt5-wayland
 qt6-wayland
 
+# ── bspwm + X11 ──────────────────────────────────────────────
+bspwm
+sxhkd
+picom
+polybar
+rofi
+plank
+feh
+maim
+xclip
+xorg-server
+xorg-xinit
+xorg-xsetroot
+xorg-xrandr
+
 # ── UI components ──────────────────────────────────────────────
 waybar
 wofi

@@ -45,7 +45,7 @@ cat << 'BANNER'
     ┌─────────────────────────────────────────┐
     │                                         │
     │            peak-linux                   │
-    │     macOS-themed Arch with Hyprland     │
+    │   macOS-themed Arch: Hyprland + bspwm   │
     │                                         │
     │         Guided Installer                │
     │                                         │
@@ -58,7 +58,7 @@ echo ""
 echo "  This installer will:"
 echo "    1. Partition and format your disk"
 echo "    2. Install Arch Linux base system"
-echo "    3. Configure Hyprland + macOS theme"
+echo "    3. Configure Hyprland + bspwm + macOS theme"
 if [[ "$BOOT_MODE" == "uefi" ]]; then
 echo "    4. Set up developer tools + Secure Boot"
 else
@@ -426,6 +426,8 @@ pacman -S --needed --noconfirm \
     kitty thunar gvfs imv mpv firefox \
     brightnessctl playerctl polkit-gnome gnome-keyring \
     grim slurp wl-clipboard cliphist swww ly \
+    bspwm sxhkd picom polybar rofi plank feh maim xclip \
+    xorg-server xorg-xinit xorg-xsetroot xorg-xrandr \
     lazygit ripgrep fd fzf tree unzip wget curl openssh npm nodejs python \
     starship eza bat zoxide \
     ttf-jetbrains-mono-nerd noto-fonts noto-fonts-emoji \
@@ -479,7 +481,8 @@ sudo -u "$USERNAME" paru -S --needed --noconfirm \
     nwg-dock-hyprland \
     whitesur-gtk-theme \
     whitesur-icon-theme \
-    whitesur-cursor-theme || {
+    whitesur-cursor-theme \
+    betterlockscreen || {
     echo "[WARN] Some AUR packages may have failed — you can install them later"
 }
 
@@ -493,11 +496,21 @@ CONFIG_SRC="/root/peak-linux/configs"
 mkdir -p "\$USER_HOME/.config"
 
 # Deploy each config directory
-for dir in hypr waybar wofi kitty dunst gtk-3.0; do
+for dir in hypr waybar wofi kitty dunst gtk-3.0 bspwm sxhkd picom polybar rofi; do
     if [[ -d "\$CONFIG_SRC/\$dir" ]]; then
         cp -r "\$CONFIG_SRC/\$dir" "\$USER_HOME/.config/\$dir"
     fi
 done
+
+# Ensure bspwm and polybar scripts are executable
+chmod +x "\$USER_HOME/.config/bspwm/bspwmrc" 2>/dev/null || true
+chmod +x "\$USER_HOME/.config/polybar/launch.sh" 2>/dev/null || true
+
+# Install bspwm X11 session entry for ly
+mkdir -p /usr/share/xsessions
+if [[ -f "\$CONFIG_SRC/bspwm/peak-bspwm.desktop" ]]; then
+    cp "\$CONFIG_SRC/bspwm/peak-bspwm.desktop" /usr/share/xsessions/bspwm.desktop
+fi
 
 # Starship
 mkdir -p "\$USER_HOME/.config"
@@ -581,7 +594,7 @@ echo -e "${NC}"
 echo "  Next steps:"
 echo "    1. Remove the USB drive"
 echo "    2. Reboot: type 'reboot'"
-echo "    3. Log in at ly → select Hyprland"
+echo "    3. Log in at ly → select Hyprland (Wayland) or bspwm (X11)"
 if [[ "$BOOT_MODE" == "uefi" ]]; then
 echo ""
 echo "  For Secure Boot:"

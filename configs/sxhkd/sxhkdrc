@@ -1,0 +1,120 @@
+# peak-linux — sxhkd Keybinding Configuration
+# macOS-inspired keybinds for bspwm (mirrors Hyprland bindings)
+
+# ── App Launchers ─────────────────────────────────────────────
+# Terminal
+super + Return
+	kitty
+
+# App launcher (Spotlight-style)
+super + d
+	rofi -show drun -theme spotlight
+
+# File manager
+super + e
+	thunar
+
+# Browser
+super + b
+	firefox
+
+# Clipboard history
+super + v
+	clipmenu
+
+# ── Window Management ─────────────────────────────────────────
+# Close window
+super + q
+	bspc node -c
+
+# Quit bspwm
+super + shift + q
+	bspc quit
+
+# Fullscreen
+super + f
+	bspc node -t ~fullscreen
+
+# Monocle layout (maximize)
+super + m
+	bspc desktop -l next
+
+# Toggle floating
+super + t
+	bspc node -t ~floating
+
+# Toggle split direction
+super + s
+	bspc node -R 90
+
+# ── Focus Movement ────────────────────────────────────────────
+super + {h,j,k,l}
+	bspc node -f {west,south,north,east}
+
+super + {Left,Down,Up,Right}
+	bspc node -f {west,south,north,east}
+
+# ── Window Movement ───────────────────────────────────────────
+super + shift + {h,j,k,l}
+	bspc node -s {west,south,north,east}
+
+super + shift + {Left,Down,Up,Right}
+	bspc node -s {west,south,north,east}
+
+# ── Resize ────────────────────────────────────────────────────
+super + ctrl + {h,l}
+	bspc node -z {left -30 0,right 30 0}
+
+super + ctrl + {j,k}
+	bspc node -z {bottom 0 30,top 0 -30}
+
+# ── Workspaces ────────────────────────────────────────────────
+# Switch to workspace
+super + {1-9}
+	bspc desktop -f '^{1-9}'
+
+# Move window to workspace
+super + shift + {1-9}
+	bspc node -d '^{1-9}' --follow
+
+# ── Screenshots ───────────────────────────────────────────────
+# Full screen to clipboard
+Print
+	maim | xclip -selection clipboard -t image/png
+
+# Region select to clipboard
+shift + Print
+	maim -s | xclip -selection clipboard -t image/png
+
+# Full screen to file
+super + Print
+	maim "$HOME/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png"
+
+# ── Media / Brightness ────────────────────────────────────────
+XF86AudioRaiseVolume
+	wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+
+
+XF86AudioLowerVolume
+	wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+
+XF86AudioMute
+	wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+
+XF86AudioPlay
+	playerctl play-pause
+
+XF86AudioNext
+	playerctl next
+
+XF86AudioPrev
+	playerctl previous
+
+XF86MonBrightnessUp
+	brightnessctl -e4 -n2 set 5%+
+
+XF86MonBrightnessDown
+	brightnessctl -e4 -n2 set 5%-
+
+# ── Lock Screen ───────────────────────────────────────────────
+super + ctrl + l
+	betterlockscreen -l blur

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=bspwm
+Comment=peak-linux bspwm session (X11)
+Exec=bspwm
+TryExec=bspwm
+Type=Application
